@@ -7,28 +7,23 @@ import (
 )
 
 type Server struct {
-	Port     int
-	numConns int
+	Port int
 }
 
 // Start() listens on the port and accepts new connections with a handler.
-func (s *Server) Start() {
+func (s *Server) Start() error {
 	address := fmt.Sprintf(":%d", s.Port)
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
-		log.Println(err)
-		return
+		return err
 	}
 	defer ln.Close()
 
 	for {
 		conn, err := ln.Accept()
 		log.Printf("Connected to %s", conn.RemoteAddr().String())
-		s.numConns += 1
-		log.Printf("%d connections now open", s.numConns)
 		if err != nil {
 			log.Println(err)
-			return
 		}
 		go s.handleConnection(conn)
 	}
@@ -49,11 +44,11 @@ func (s *Server) handleConnection(conn net.Conn) {
 		log.Println(message)
 
 		// Send OK response
-		_, err = conn.Write([]byte("OK\r\n"))
+		_, err = conn.Write([]byte("OK\n"))
 		if err != nil {
 			log.Println(err)
 		}
 	}
-	s.numConns -= 1
-	log.Printf("%d connnections now open", s.numConns)
+
+	log.Printf("Closing connection with %s", conn.RemoteAddr().String())
 }

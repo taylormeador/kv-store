@@ -13,5 +13,8 @@ func main() {
 		Port: PORT_NUMBER,
 	}
 	log.Printf("Starting server on localhost:%d", PORT_NUMBER)
-	s.Start()
+	err := s.Start()
+	if err != nil {
+		log.Fatal(err)
+	}
 }
