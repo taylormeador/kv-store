@@ -58,6 +58,8 @@ func ParseCommand(input string) (*Command, error) {
 		case 2:
 			c.Value = word
 			count++
+		default:
+			count++
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -74,6 +76,9 @@ func ParseCommand(input string) (*Command, error) {
 		if count != 3 {
 			return nil, ErrInvalidCommand
 		}
+	default:
+		// Empty input or no valid directive parsed
+		return nil, ErrInvalidCommand
 	}
 
 	return c, nil
