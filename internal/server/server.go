@@ -1,13 +1,18 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net"
+	"sync"
+	"time"
 )
 
 type Server struct {
-	Port int
+	Port     int
+	wg       sync.WaitGroup
+	listener net.Listener
 }
 
 // Start() listens on the port and accepts new connections with a handler.
@@ -17,20 +22,50 @@ func (s *Server) Start() error {
 	if err != nil {
 		return err
 	}
+	s.listener = ln
 	defer ln.Close()
 
 	for {
 		conn, err := ln.Accept()
-		log.Printf("Connected to %s", conn.RemoteAddr().String())
 		if err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				break
+			}
 			log.Println(err)
+			continue
 		}
+		log.Printf("Connected to %s", conn.RemoteAddr().String())
+		s.wg.Add(1)
 		go s.handleConnection(conn)
+	}
+	return nil
+}
+
+func (s *Server) Shutdown() {
+	// Close listener.
+	log.Println("Shutting down server...")
+	s.listener.Close()
+
+	// Wait for workers to finish.
+	log.Println("Listener closed, waiting for workers to finish...")
+	done := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+
+	// Create a timeout for worker cleanup.
+	select {
+	case <-done:
+		log.Println("All workers exited, stopping now")
+	case <-time.After(10 * time.Second):
+		log.Println("Worker cleanup timed out, forcing shutdown")
 	}
 }
 
 func (s *Server) handleConnection(conn net.Conn) {
 	defer conn.Close()
+	defer s.wg.Done()
 
 	// Enter read/respond loop
 	for {
