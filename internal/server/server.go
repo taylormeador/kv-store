@@ -133,9 +133,11 @@ func (s *Server) handleConnection(conn net.Conn) {
 				response = val
 			}
 		case protocol.SetDirective:
+			s.WAL.Append(*c)
 			s.Store.Set(c.Key, c.Value)
 			response = "OK"
 		case protocol.DeleteDirective:
+			s.WAL.Append(*c)
 			exists := s.Store.Delete(c.Key)
 			if exists {
 				response = "TRUE"
