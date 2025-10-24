@@ -3,8 +3,6 @@ package protocol
 import (
 	"bufio"
 	"errors"
-	"fmt"
-	"os"
 	"strings"
 )
 
@@ -61,10 +59,21 @@ func ParseCommand(input string) (*Command, error) {
 			c.Value = word
 			count++
 		}
-
 	}
 	if err := scanner.Err(); err != nil {
-		fmt.Fprintln(os.Stderr, "reading input:", err)
+		return nil, err
+	}
+
+	// Validate argument counts
+	switch c.Directive {
+	case GetDirective, DeleteDirective, ExistsDirective:
+		if count != 2 {
+			return nil, ErrInvalidCommand
+		}
+	case SetDirective:
+		if count != 3 {
+			return nil, ErrInvalidCommand
+		}
 	}
 
 	return c, nil
