@@ -12,19 +12,19 @@ import (
 const PORT_NUMBER int = 8080
 
 func main() {
+	// Set up interrupt channel
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
-	s := &server.Server{
-		Port: PORT_NUMBER,
+	// Start server
+	s := server.NewServer(PORT_NUMBER)
+	err := s.Listen()
+	if err != nil {
+		log.Fatal("Problem opening listener", err)
 	}
-	log.Printf("Starting server on localhost:%d", PORT_NUMBER)
-	go func() {
-		if err := s.Start(); err != nil {
-			log.Fatal("Failed to start server:", err)
-		}
-	}()
+	go s.Serve()
 
+	// Graceful shutdown
 	signal := <-signals
 	log.Println("Received signal:", signal)
 	s.Shutdown()

@@ -15,18 +15,34 @@ type Server struct {
 	listener net.Listener
 }
 
-// Start() listens on the port and accepts new connections with a handler.
-func (s *Server) Start() error {
+// Constructor
+func NewServer(port int) *Server {
+	return &Server{
+		Port: port,
+	}
+}
+
+// Opens listener.
+func (s *Server) Listen() error {
+
 	address := fmt.Sprintf(":%d", s.Port)
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
 	}
 	s.listener = ln
-	defer ln.Close()
+
+	log.Printf("Starting server on localhost:%d", s.Port)
+
+	return nil
+}
+
+// Serve() listens on the port and accepts new connections with a handler.
+func (s *Server) Serve() {
+	defer s.listener.Close()
 
 	for {
-		conn, err := ln.Accept()
+		conn, err := s.listener.Accept()
 		if err != nil {
 			if errors.Is(err, net.ErrClosed) {
 				break
@@ -38,7 +54,6 @@ func (s *Server) Start() error {
 		s.wg.Add(1)
 		go s.handleConnection(conn)
 	}
-	return nil
 }
 
 func (s *Server) Shutdown() {
