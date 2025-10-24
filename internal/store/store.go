@@ -1,28 +1,28 @@
 package store
 
-import "errors"
-
 type Store struct {
 	data map[string]string
 }
 
-var ErrKeyNotExists error = errors.New("key does not exist")
-
-func (s *Store) Get(key string) (string, error) {
-	val, ok := s.data[key]
-	if ok {
-		return val, nil
-	} else {
-		return val, ErrKeyNotExists
+func NewStore() *Store {
+	return &Store{
+		data: make(map[string]string),
 	}
+}
+
+func (s *Store) Get(key string) (string, bool) {
+	val, exists := s.data[key]
+	return val, exists
 }
 
 func (s *Store) Set(key string, value string) {
 	s.data[key] = value
 }
 
-func (s *Store) Delete(key string) {
+func (s *Store) Delete(key string) bool {
+	_, exists := s.data[key]
 	delete(s.data, key)
+	return exists
 }
 
 func (s *Store) Exists(key string) bool {

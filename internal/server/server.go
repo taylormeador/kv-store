@@ -10,10 +10,12 @@ import (
 	"time"
 
 	"github.com/taylormeador/kv-store/internal/protocol"
+	"github.com/taylormeador/kv-store/internal/store"
 )
 
 type Server struct {
 	Port     int
+	Store    *store.Store
 	wg       sync.WaitGroup
 	listener net.Listener
 }
@@ -21,7 +23,8 @@ type Server struct {
 // Constructor
 func NewServer(port int) *Server {
 	return &Server{
-		Port: port,
+		Port:  port,
+		Store: store.NewStore(),
 	}
 }
 
@@ -88,15 +91,53 @@ func (s *Server) handleConnection(conn net.Conn) {
 	// Enter read/respond loop
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
+		// Parse command
 		ln := scanner.Text()
 		c, err := protocol.ParseCommand(ln)
 		if err != nil {
-			log.Println("TODO")
-		}
-		log.Println(c)
+			log.Println("Error parsing command:", err)
 
-		// Send OK response
-		_, err = conn.Write([]byte("OK\n"))
+			// Send response
+			response := fmt.Sprintf("ERROR %s\n", err)
+			_, err = conn.Write([]byte(response))
+			if err != nil {
+				log.Println(err)
+			}
+			continue
+		}
+
+		// Execute command
+		response := ""
+		switch c.Directive {
+		case protocol.GetDirective:
+			val, exists := s.Store.Get(c.Key)
+			if !exists {
+				response = "ERROR key not found"
+			} else {
+				response = val
+			}
+		case protocol.SetDirective:
+			s.Store.Set(c.Key, c.Value)
+			response = "OK"
+		case protocol.DeleteDirective:
+			exists := s.Store.Delete(c.Key)
+			if exists {
+				response = "TRUE"
+			} else {
+				response = "FALSE"
+			}
+		case protocol.ExistsDirective:
+			exists := s.Store.Exists(c.Key)
+			if exists {
+				response = "TRUE"
+			} else {
+				response = "FALSE"
+			}
+		}
+
+		// Send response
+		log.Printf("Writing to %s: %s", conn.RemoteAddr().String(), response)
+		_, err = conn.Write([]byte(response + "\n"))
 		if err != nil {
 			log.Println(err)
 		}
