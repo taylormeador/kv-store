@@ -11,26 +11,42 @@ import (
 
 	"github.com/taylormeador/kv-store/internal/protocol"
 	"github.com/taylormeador/kv-store/internal/store"
+	"github.com/taylormeador/kv-store/internal/wal"
 )
 
 type Server struct {
 	Port     int
 	Store    *store.Store
+	WAL      *wal.WAL
 	wg       sync.WaitGroup
 	listener net.Listener
 }
 
 // Constructor
-func NewServer(port int) *Server {
-	return &Server{
-		Port:  port,
-		Store: store.NewStore(),
+func NewServer(port int, wal_path string) (*Server, error) {
+	// Create WAL
+	wal, err := wal.NewWAL(wal_path)
+	if err != nil {
+		return nil, err
 	}
+
+	// Init data store and restore to last known state
+	store := store.NewStore()
+	err = wal.Replay(store)
+	if err != nil {
+		return nil, err
+	}
+
+	s := &Server{
+		Port:  port,
+		Store: store,
+		WAL:   wal,
+	}
+	return s, nil
 }
 
 // Opens listener.
 func (s *Server) Listen() error {
-
 	address := fmt.Sprintf(":%d", s.Port)
 	ln, err := net.Listen("tcp", address)
 	if err != nil {

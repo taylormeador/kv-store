@@ -10,6 +10,7 @@ import (
 )
 
 const PORT_NUMBER int = 8080
+const WAL_PATH string = "/var/lib/kv-store/WAL.log"
 
 func main() {
 	// Set up interrupt channel
@@ -17,10 +18,14 @@ func main() {
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	// Start server
-	s := server.NewServer(PORT_NUMBER)
-	err := s.Listen()
+	s, err := server.NewServer(PORT_NUMBER, WAL_PATH)
 	if err != nil {
-		log.Fatal("Problem opening listener", err)
+		log.Fatal(err)
+	}
+
+	err = s.Listen()
+	if err != nil {
+		log.Fatal(err)
 	}
 	go s.Serve()
 
