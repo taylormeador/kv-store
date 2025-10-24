@@ -1,12 +1,15 @@
 package server
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"log"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/taylormeador/kv-store/internal/protocol"
 )
 
 type Server struct {
@@ -83,15 +86,14 @@ func (s *Server) handleConnection(conn net.Conn) {
 	defer s.wg.Done()
 
 	// Enter read/respond loop
-	for {
-		buf := make([]byte, 1024)
-		n, err := conn.Read(buf)
+	scanner := bufio.NewScanner(conn)
+	for scanner.Scan() {
+		ln := scanner.Text()
+		c, err := protocol.ParseCommand(ln)
 		if err != nil {
-			log.Println(err)
-			break
+			log.Println("TODO")
 		}
-		message := string(buf[:n])
-		log.Println(message)
+		log.Println(c)
 
 		// Send OK response
 		_, err = conn.Write([]byte("OK\n"))
