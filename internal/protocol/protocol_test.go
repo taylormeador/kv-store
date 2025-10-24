@@ -245,3 +245,118 @@ func TestDirectiveIsValid(t *testing.T) {
 		})
 	}
 }
+
+func TestCommandString(t *testing.T) {
+	tests := []struct {
+		name    string
+		command Command
+		want    string
+	}{
+		{
+			name: "GET command",
+			command: Command{
+				Directive: GetDirective,
+				Key:       "mykey",
+				Value:     "",
+			},
+			want: "GET mykey",
+		},
+		{
+			name: "SET command",
+			command: Command{
+				Directive: SetDirective,
+				Key:       "mykey",
+				Value:     "myvalue",
+			},
+			want: "SET mykey myvalue",
+		},
+		{
+			name: "DELETE command",
+			command: Command{
+				Directive: DeleteDirective,
+				Key:       "mykey",
+				Value:     "",
+			},
+			want: "DELETE mykey",
+		},
+		{
+			name: "EXISTS command",
+			command: Command{
+				Directive: ExistsDirective,
+				Key:       "mykey",
+				Value:     "",
+			},
+			want: "EXISTS mykey",
+		},
+		{
+			name: "SET with numeric value",
+			command: Command{
+				Directive: SetDirective,
+				Key:       "count",
+				Value:     "42",
+			},
+			want: "SET count 42",
+		},
+		{
+			name: "Key with special characters",
+			command: Command{
+				Directive: GetDirective,
+				Key:       "user:123:name",
+				Value:     "",
+			},
+			want: "GET user:123:name",
+		},
+		{
+			name: "SET with special characters in value",
+			command: Command{
+				Directive: SetDirective,
+				Key:       "config",
+				Value:     "value-with-dashes",
+			},
+			want: "SET config value-with-dashes",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.command.String()
+			if got != tt.want {
+				t.Errorf("Command.String() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCommandStringRoundTrip(t *testing.T) {
+	// Test that String() produces output that can be parsed back
+	tests := []Command{
+		{Directive: GetDirective, Key: "foo", Value: ""},
+		{Directive: SetDirective, Key: "foo", Value: "bar"},
+		{Directive: DeleteDirective, Key: "baz", Value: ""},
+		{Directive: ExistsDirective, Key: "qux", Value: ""},
+	}
+
+	for _, original := range tests {
+		t.Run(string(original.Directive), func(t *testing.T) {
+			// Convert to string
+			cmdString := original.String()
+
+			// Parse it back
+			parsed, err := ParseCommand(cmdString)
+			if err != nil {
+				t.Fatalf("ParseCommand(%q) failed: %v", cmdString, err)
+			}
+
+			// Should match original
+			if parsed.Directive != original.Directive {
+				t.Errorf("Directive = %v, want %v", parsed.Directive, original.Directive)
+			}
+			if parsed.Key != original.Key {
+				t.Errorf("Key = %v, want %v", parsed.Key, original.Key)
+			}
+			if parsed.Value != original.Value {
+				t.Errorf("Value = %v, want %v", parsed.Value, original.Value)
+			}
+		})
+	}
+}

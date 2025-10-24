@@ -83,3 +83,12 @@ func ParseCommand(input string) (*Command, error) {
 
 	return c, nil
 }
+
+// Returns a string of a valid Command
+func (c *Command) String() string {
+	result := string(c.Directive) + " " + c.Key
+	if c.Directive == SetDirective {
+		result += " " + c.Value
+	}
+	return result
+}
