@@ -4,7 +4,7 @@ import "sync"
 
 type Store struct {
 	data map[string]string
-	mu   sync.Mutex
+	mu   sync.RWMutex
 }
 
 func NewStore() *Store {
@@ -14,8 +14,8 @@ func NewStore() *Store {
 }
 
 func (s *Store) Get(key string) (string, bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	val, exists := s.data[key]
 	return val, exists
@@ -38,8 +38,8 @@ func (s *Store) Delete(key string) bool {
 }
 
 func (s *Store) Exists(key string) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	_, exists := s.data[key]
 	return exists

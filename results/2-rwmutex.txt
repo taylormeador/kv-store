@@ -1,0 +1,36 @@
+goos: linux
+goarch: amd64
+pkg: github.com/taylormeador/kv-store/internal/store
+cpu: Intel(R) Xeon(R) W-2135 CPU @ 3.70GHz
+BenchmarkStoreGet-12      	21209172	        47.70 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreGet-12      	26352988	        45.53 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreGet-12      	27818106	        44.19 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreGet-12      	27719625	        42.31 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreGet-12      	25931600	        43.04 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreGet-12      	27284005	        43.49 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreGet-12      	28611340	        42.64 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreGet-12      	28583214	        42.96 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreGet-12      	26858901	        42.17 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreGet-12      	29499710	        43.22 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreSet-12      	11009938	       324.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreSet-12      	 3274716	       381.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreSet-12      	 3275782	       381.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreSet-12      	 3175161	       378.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreSet-12      	 3161269	       382.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreSet-12      	 3246034	       380.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreSet-12      	 4386741	       323.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreSet-12      	 3158122	       358.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreSet-12      	 3209262	       375.0 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreSet-12      	 3239929	       360.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreMixed-12    	 8327337	       151.3 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreMixed-12    	 7870497	       147.2 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreMixed-12    	 8273832	       154.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreMixed-12    	 9127970	       160.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreMixed-12    	 7313994	       170.8 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreMixed-12    	 7175319	       145.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreMixed-12    	 7468105	       164.9 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreMixed-12    	 7926277	       153.6 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreMixed-12    	 7335889	       175.1 ns/op	       0 B/op	       0 allocs/op
+BenchmarkStoreMixed-12    	 9291366	       144.3 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/taylormeador/kv-store/internal/store	47.396s

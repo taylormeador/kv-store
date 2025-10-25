@@ -1,0 +1,28 @@
+goos: linux
+goarch: amd64
+pkg: github.com/taylormeador/kv-store/internal/store
+cpu: Intel(R) Xeon(R) W-2135 CPU @ 3.70GHz
+              │ results/1-baseline.txt │        results/2-rwmutex.txt         │
+              │         sec/op         │    sec/op     vs base                │
+StoreGet-12              240.95n ± 17%   43.13n ±  6%  -82.10% (p=0.000 n=10)
+StoreSet-12               316.2n ± 17%   376.8n ± 14%  +19.15% (p=0.000 n=10)
+StoreMixed-12             325.1n ± 10%   154.2n ± 11%  -52.56% (p=0.000 n=10)
+geomean                   291.5n         135.8n        -53.40%
+
+              │ results/1-baseline.txt │        results/2-rwmutex.txt        │
+              │          B/op          │    B/op     vs base                 │
+StoreGet-12               0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+StoreSet-12               0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+StoreMixed-12             0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+geomean                              ²               +0.00%                ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
+
+              │ results/1-baseline.txt │        results/2-rwmutex.txt        │
+              │       allocs/op        │ allocs/op   vs base                 │
+StoreGet-12               0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+StoreSet-12               0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+StoreMixed-12             0.000 ± 0%     0.000 ± 0%       ~ (p=1.000 n=10) ¹
+geomean                              ²               +0.00%                ²
+¹ all samples are equal
+² summaries must be >0 to compute geomean
