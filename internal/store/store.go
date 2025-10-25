@@ -1,7 +1,10 @@
 package store
 
+import "sync"
+
 type Store struct {
 	data map[string]string
+	mu   sync.Mutex
 }
 
 func NewStore() *Store {
@@ -11,21 +14,33 @@ func NewStore() *Store {
 }
 
 func (s *Store) Get(key string) (string, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	val, exists := s.data[key]
 	return val, exists
 }
 
 func (s *Store) Set(key string, value string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	s.data[key] = value
 }
 
 func (s *Store) Delete(key string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	_, exists := s.data[key]
 	delete(s.data, key)
 	return exists
 }
 
 func (s *Store) Exists(key string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	_, exists := s.data[key]
 	return exists
 }
