@@ -79,11 +79,11 @@ func (s *Server) Serve() {
 }
 
 func (s *Server) Shutdown() {
-	// Close listener.
+	// Close listener
 	log.Println("Shutting down server...")
 	s.listener.Close()
 
-	// Wait for workers to finish.
+	// Wait for workers to finish
 	log.Println("Listener closed, waiting for workers to finish...")
 	done := make(chan struct{})
 	go func() {
@@ -91,12 +91,18 @@ func (s *Server) Shutdown() {
 		close(done)
 	}()
 
-	// Create a timeout for worker cleanup.
+	// Create a timeout for worker cleanup
 	select {
 	case <-done:
-		log.Println("All workers exited, stopping now")
+		log.Println("All workers exited...")
 	case <-time.After(10 * time.Second):
 		log.Println("Worker cleanup timed out, forcing shutdown")
+	}
+
+	// Close WAL
+	log.Println("Closing WAL...")
+	if err := s.WAL.Close(); err != nil {
+		log.Printf("Error closing WAL: %v", err)
 	}
 }
 
