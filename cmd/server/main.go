@@ -10,7 +10,7 @@ import (
 )
 
 const PORT_NUMBER int = 8080
-const WAL_PATH string = "./data/wal.log"
+const WAL_PATH string = "/data/wal.log"
 
 func main() {
 	// Set up interrupt channel
