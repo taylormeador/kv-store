@@ -1,0 +1,27 @@
+Starting load test:
+  Clients: 10
+  Operations per client: 1000
+  Total operations: 10000
+  Read ratio: 80%
+
+============================================================
+LOAD TEST RESULTS
+============================================================
+
+Duration: 9.18s
+Total operations: 10000
+Throughput: 1089.00 ops/sec
+
+Latency by operation type:
+------------------------------------------------------------
+Operation    Count      Mean       P50        P95        P99       
+------------------------------------------------------------
+SET          1825           6.21ms     5.68ms     8.84ms    11.46ms
+GET          6353           0.82ms     0.20ms     2.95ms     3.35ms
+DELETE       208            6.37ms     5.73ms     8.96ms    14.94ms
+EXISTS       1614           0.90ms     0.22ms     2.96ms     3.38ms
+
+OVERALL      10000          1.93ms     0.30ms     7.46ms     8.85ms
+
+All correctness checks passed!
+
