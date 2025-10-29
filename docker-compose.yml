@@ -1,10 +1,61 @@
 services:
-  kv-store:
+  node-1:
     build: .
     ports:
-      - "8080:8080"
+      - "8081:8081"
+      - "9091:9091"
+    environment:
+      - KV_PORT=8081
+      - RAFT_PORT=9091
+      - RAFT_ID=1
+      - RAFT_PEERS=node-2:9092,node-3:9093
+      - WAL_PATH=/wal-1.log
     volumes:
-      - ./data:/data
+      - ./data/node-1:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 512M
+        reservations:
+          cpus: '1.0'
+          memory: 256M
+
+  node-2:
+    build: .
+    ports:
+      - "8082:8082"
+      - "9092:9092"
+    environment:
+      - KV_PORT=8082
+      - RAFT_PORT=9092
+      - RAFT_ID=2
+      - RAFT_PEERS=node-1:9091,node-3:9093
+      - WAL_PATH=/wal-2.log
+    volumes:
+      - ./data/node-2:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 512M
+        reservations:
+          cpus: '1.0'
+          memory: 256M
+
+  node-3:
+    build: .
+    ports:
+      - "8083:8083"
+      - "9093:9093"
+    environment:
+      - KV_PORT=8083
+      - RAFT_PORT=9093
+      - RAFT_ID=3
+      - RAFT_PEERS=node-1:9091,node-2:9092
+      - WAL_PATH=/wal-3.log
+    volumes:
+      - ./data/node-3:/data
     deploy:
       resources:
         limits:
