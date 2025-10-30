@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/taylormeador/kv-store/internal/raft"
 	"github.com/taylormeador/kv-store/internal/server"
@@ -45,7 +44,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	go raftNode.Serve()
+	go raftNode.Start()
 
 	// Start kv server
 	kvServer, err := server.NewServer(KV_PORT, WAL_PATH)
@@ -58,13 +57,6 @@ func main() {
 		log.Fatal(err)
 	}
 	go kvServer.Serve()
-
-	// TODO testing
-	time.Sleep(1000 * time.Millisecond)
-	err = raftNode.SendRequestVote()
-	if err != nil {
-		log.Println(err)
-	}
 
 	// Graceful shutdown
 	signal := <-signals

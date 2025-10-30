@@ -4,26 +4,22 @@ import (
 	"net"
 )
 
-// Send RequestVote to a peer
-func (n *Node) SendRequestVote() error {
+// Send a request to vote to a peer
+func (n *Node) sendRequestVote(peer string, req RequestVoteRequest) (*RequestVoteResponse, error) {
 	var d net.Dialer
-	conn, err := d.Dial("tcp", n.Peers[0])
+	conn, err := d.Dial("tcp", peer)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer conn.Close()
 
-	data := RequestVoteRequest{
-		Type:         RequestVoteRPC,
-		Term:         n.CurrentTerm,
-		CandidateID:  n.ID,
-		LastLogIndex: 1,
-		LastLogTerm:  1,
-	}
-	err = n.writeJSON(conn, data)
-	if err != nil {
-		return err
+	if err := n.writeJSON(conn, req); err != nil {
+		return nil, err
 	}
 
-	return nil
+	var resp RequestVoteResponse
+	if err := n.readJSON(conn, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }

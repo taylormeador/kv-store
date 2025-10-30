@@ -16,8 +16,9 @@ type RequestVoteRequest struct {
 }
 
 type RequestVoteResponse struct {
-	Term        int
-	VoteGranted bool
+	Type        RPCType `json:"type"`
+	Term        int     `json:"term"`
+	VoteGranted bool    `json:"vote_granted"`
 }
 
 type AppendEntriesRequest struct {

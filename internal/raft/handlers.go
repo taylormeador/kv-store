@@ -1,49 +1,66 @@
 package raft
 
 import (
-	"encoding/json"
 	"log"
 	"net"
+	"time"
 )
 
-func (n *Node) handleRequestVote(conn net.Conn, r RequestVoteRequest) error {
-	log.Printf("Request vote received from %s", conn.RemoteAddr().String())
+func (n *Node) handleRequestVote(conn net.Conn, req RequestVoteRequest) error {
+	log.Printf("request vote received from %s", conn.RemoteAddr().String())
 
-	var voteGranted bool
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	resp := RequestVoteResponse{
+		Type:        RequestVoteRPC,
+		Term:        n.currentTerm,
+		VoteGranted: false,
+	}
 
 	// Reply false if term < currentTerm.
-	if r.Term >= n.CurrentTerm {
-		// If votedFor is null or candidateId, and candidate’s log is at
-		// least as up-to-date as receiver’s log, grant vote.
-		if n.VotedFor == 0 || n.VotedFor == r.CandidateID {
-			if n.LastLogIndex <= r.LastLogIndex {
-				voteGranted = true
-			}
+	if req.Term < n.currentTerm {
+		log.Printf("candidate %d rejected for stale term", req.CandidateID)
+		if err := n.writeJSON(conn, resp); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if req.Term > n.currentTerm {
+		log.Printf("higher term seen (%d), stepping down to follower", req.Term)
+		n.becomeFollower(req.Term)
+	}
+
+	// If votedFor is null or candidateId, and candidate’s log is at
+	// least as up-to-date as receiver’s log, grant vote.
+	if n.votedFor == 0 || n.votedFor == req.CandidateID {
+		if n.lastLogIndex <= req.LastLogIndex {
+			resp.VoteGranted = true
+			n.votedFor = req.CandidateID
+			n.lastHeartbeat = time.Now()
+			// TODO write currentTerm, votedFor, and log[] to disk before responding
 		}
 	}
 
-	response := RequestVoteResponse{
-		Term:        n.CurrentTerm,
-		VoteGranted: voteGranted,
-	}
-	err := n.writeJSON(conn, response)
-	if err != nil {
+	if err := n.writeJSON(conn, resp); err != nil {
 		return err
 	}
-
-	log.Printf("Voted: %v", response)
-
+	log.Printf("Voted: %v", resp)
 	return nil
 }
 
-func (n *Node) handleAppendEntries(conn net.Conn) {
-	response := AppendEntriesResponse{
+func (n *Node) handleAppendEntries(conn net.Conn) error {
+	resp := AppendEntriesResponse{
 		Term:    1,
 		Success: false,
 	}
 
-	jsonResponse, _ := json.Marshal(response)
-	conn.Write(append(jsonResponse, '\n'))
+	if err := n.writeJSON(conn, resp); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (n *Node) Shutdown() {

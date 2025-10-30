@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
+	"time"
 )
 
 type NodeState string
@@ -18,42 +20,57 @@ const (
 )
 
 type Node struct {
-	ID           int
-	Port         int
-	Peers        []string
-	State        NodeState
-	CurrentTerm  int
-	VotedFor     int
-	LastLogIndex int
-	LastLogTerm  int
-	Log          []string
-	listener     net.Listener
+	// Self
+	id    int
+	port  int
+	peers []string
+
+	// State
+	mu           sync.RWMutex
+	state        NodeState
+	currentTerm  int
+	votedFor     int
+	lastLogIndex int
+	lastLogTerm  int
+	log          []string
+
+	// Timing
+	lastHeartbeat    time.Time
+	heartbeatTimeout time.Duration
+
+	listener net.Listener
 }
 
 func NewNode(ID int, port int, peers []string) *Node {
 	return &Node{
-		ID:    ID,
-		Port:  port,
-		Peers: peers,
-		State: FollowerState,
+		id:    ID,
+		port:  port,
+		peers: peers,
+
+		state: FollowerState,
+
+		lastHeartbeat:    time.Now(),
+		heartbeatTimeout: randomTimeout(),
 	}
 }
 
 func (n *Node) Listen() error {
-	address := fmt.Sprintf(":%d", n.Port)
+	address := fmt.Sprintf(":%d", n.port)
 	ln, err := net.Listen("tcp", address)
 	if err != nil {
 		return err
 	}
 	n.listener = ln
 
-	log.Printf("Starting raft server on localhost:%d", n.Port)
+	log.Printf("Starting raft server on localhost:%d", n.port)
 
 	return nil
 }
 
-func (n *Node) Serve() {
+func (n *Node) Start() {
 	defer n.listener.Close()
+
+	go n.runElectionTimer()
 
 	for {
 		conn, err := n.listener.Accept()
@@ -89,13 +106,13 @@ func (n *Node) handleConnection(conn net.Conn) {
 		// Route based on type
 		switch typeMsg.Type {
 		case RequestVoteRPC:
-			var request RequestVoteRequest
-			err = json.Unmarshal(line, &request)
+			var req RequestVoteRequest
+			err = json.Unmarshal(line, &req)
 			if err != nil {
 				log.Println(err)
 				continue
 			}
-			n.handleRequestVote(conn, request)
+			n.handleRequestVote(conn, req)
 		case AppendEntriesRPC:
 			n.handleAppendEntries(conn)
 		default:
