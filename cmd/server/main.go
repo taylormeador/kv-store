@@ -5,7 +5,9 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
+	"time"
 
 	"github.com/taylormeador/kv-store/internal/raft"
 	"github.com/taylormeador/kv-store/internal/server"
@@ -30,16 +32,15 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var WAL_PATH = os.Getenv("WAL_PATH")
-	var RAFT_PEERS = os.Getenv("RAFT_PEERS")
-	log.Println(RAFT_PEERS)
+	RAFT_PEERS := strings.Split(os.Getenv("RAFT_PEERS"), ",")
+	WAL_PATH = os.Getenv("WAL_PATH")
 
 	// Set up interrupt channel
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	// Set up raft
-	raftNode := raft.NewNode(RAFT_ID, RAFT_PORT)
+	raftNode := raft.NewNode(RAFT_ID, RAFT_PORT, RAFT_PEERS)
 	err = raftNode.Listen()
 	if err != nil {
 		log.Fatal(err)
@@ -57,6 +58,13 @@ func main() {
 		log.Fatal(err)
 	}
 	go kvServer.Serve()
+
+	// TODO testing
+	time.Sleep(1000 * time.Millisecond)
+	err = raftNode.SendRequestVote()
+	if err != nil {
+		log.Println(err)
+	}
 
 	// Graceful shutdown
 	signal := <-signals

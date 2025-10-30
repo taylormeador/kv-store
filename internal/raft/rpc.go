@@ -1,10 +1,18 @@
 package raft
 
+type RPCType string
+
+const (
+	RequestVoteRPC   RPCType = "RequestVote"
+	AppendEntriesRPC RPCType = "AppendEntries"
+)
+
 type RequestVoteRequest struct {
-	Term         int
-	CandidateID  int
-	LastLogIndex int
-	LastLogTerm  int
+	Type         RPCType `json:"type"`
+	Term         int     `json:"term"`
+	CandidateID  int     `json:"candidate_id"`
+	LastLogIndex int     `json:"last_log_index"`
+	LastLogTerm  int     `json:"last_log_term"`
 }
 
 type RequestVoteResponse struct {

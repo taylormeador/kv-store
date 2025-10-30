@@ -18,17 +18,23 @@ const (
 )
 
 type Node struct {
-	ID       int
-	Port     int
-	Peers    []int
-	State    NodeState
-	listener net.Listener
+	ID           int
+	Port         int
+	Peers        []string
+	State        NodeState
+	CurrentTerm  int
+	VotedFor     int
+	LastLogIndex int
+	LastLogTerm  int
+	Log          []string
+	listener     net.Listener
 }
 
-func NewNode(ID int, port int) *Node {
+func NewNode(ID int, port int, peers []string) *Node {
 	return &Node{
 		ID:    ID,
 		Port:  port,
+		Peers: peers,
 		State: FollowerState,
 	}
 }
@@ -68,48 +74,32 @@ func (n *Node) handleConnection(conn net.Conn) {
 
 	scanner := bufio.NewScanner(conn)
 	for scanner.Scan() {
-		line := scanner.Text()
+		line := scanner.Bytes()
 
 		// Parse JSON message
-		var msg map[string]any
-		if err := json.Unmarshal([]byte(line), &msg); err != nil {
-			log.Println("Parse error:", err)
+		var typeMsg struct {
+			Type RPCType `json:"type"`
+		}
+		err := json.Unmarshal(line, &typeMsg)
+		if err != nil {
+			log.Println("Error parsing RPC type:", err)
 			continue
 		}
 
 		// Route based on type
-		msgType := msg["type"].(string)
-		switch msgType {
-		case "RequestVote":
-			n.handleRequestVote(conn)
-		case "AppendEntries":
+		switch typeMsg.Type {
+		case RequestVoteRPC:
+			var request RequestVoteRequest
+			err = json.Unmarshal(line, &request)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			n.handleRequestVote(conn, request)
+		case AppendEntriesRPC:
 			n.handleAppendEntries(conn)
+		default:
+			log.Printf("Unknown RPC type: %s", typeMsg.Type)
 		}
-
 	}
-}
-
-func (n *Node) handleRequestVote(conn net.Conn) {
-	response := RequestVoteResponse{
-		Term:        1,
-		VoteGranted: false,
-	}
-
-	jsonResponse, _ := json.Marshal(response)
-	conn.Write(append(jsonResponse, '\n'))
-}
-
-func (n *Node) handleAppendEntries(conn net.Conn) {
-	response := AppendEntriesResponse{
-		Term:    1,
-		Success: false,
-	}
-
-	jsonResponse, _ := json.Marshal(response)
-	conn.Write(append(jsonResponse, '\n'))
-}
-
-func (n *Node) Shutdown() {
-	log.Println("Shutting down raft node...")
-	n.listener.Close()
 }
