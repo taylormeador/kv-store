@@ -46,20 +46,32 @@ func (n *Node) handleRequestVote(conn net.Conn, req RequestVoteRequest) error {
 	if err := n.writeJSON(conn, resp); err != nil {
 		return err
 	}
-	log.Printf("Voted: %v", resp)
+	log.Printf("vote %v", resp)
 	return nil
 }
 
-func (n *Node) handleAppendEntries(conn net.Conn) error {
+func (n *Node) handleAppendEntries(conn net.Conn, req AppendEntriesRequest) error {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
 	resp := AppendEntriesResponse{
-		Term:    1,
+		Term:    n.currentTerm,
 		Success: false,
+	}
+
+	if req.Term < n.currentTerm {
+		if err := n.writeJSON(conn, resp); err != nil {
+			return err
+		}
+		return nil
+	} else {
+		n.becomeFollower(req.Term)
+		resp.Success = true
 	}
 
 	if err := n.writeJSON(conn, resp); err != nil {
 		return err
 	}
-
 	return nil
 }
 

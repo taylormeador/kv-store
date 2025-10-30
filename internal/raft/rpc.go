@@ -22,15 +22,17 @@ type RequestVoteResponse struct {
 }
 
 type AppendEntriesRequest struct {
-	Term            int
-	LeaderID        int
-	PrevLogIndex    int
-	PrevLogTerm     int
-	Entries         []string
-	LeaderCommitIdx int
+	Type              RPCType  `json:"type"`
+	Term              int      `json:"term"`
+	LeaderID          int      `json:"leader_id"`
+	PrevLogIndex      int      `json:"prev_log_index"`
+	PrevLogTerm       int      `json:"prev_log_term"`
+	Entries           []string `json:"entries"`
+	LeaderCommitIndex int      `json:"leader_commit_index"`
 }
 
 type AppendEntriesResponse struct {
-	Term    int
-	Success bool
+	Type    RPCType `json:"type"`
+	Term    int     `json:"term"`
+	Success bool    `json:"success"`
 }

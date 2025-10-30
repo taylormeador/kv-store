@@ -83,16 +83,34 @@ func (n *Node) startElection() {
 	}
 }
 
-func (n *Node) becomeLeader() {
-	// Caller must hold lock
-	n.state = LeaderState
-	// TODO send intial AppendEntries RPC heartbeat
-}
-
 func (n *Node) becomeFollower(term int) {
 	// Caller must hold lock
 	n.state = FollowerState
 	n.currentTerm = term
 	n.votedFor = 0
 	n.lastHeartbeat = time.Now()
+}
+
+func (n *Node) becomeLeader() {
+	// Caller must hold lock
+	n.state = LeaderState
+	go n.runHeartbeatLoop()
+}
+
+func (n *Node) runHeartbeatLoop() {
+	for {
+		req := AppendEntriesRequest{
+			Type:              AppendEntriesRPC,
+			Term:              n.currentTerm,
+			LeaderID:          n.id,
+			PrevLogIndex:      0,
+			PrevLogTerm:       0,
+			Entries:           []string{""},
+			LeaderCommitIndex: 0,
+		}
+		for _, peer := range n.peers {
+			go n.sendAppendEntries(peer, req)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 }

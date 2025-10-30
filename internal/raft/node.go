@@ -114,7 +114,13 @@ func (n *Node) handleConnection(conn net.Conn) {
 			}
 			n.handleRequestVote(conn, req)
 		case AppendEntriesRPC:
-			n.handleAppendEntries(conn)
+			var req AppendEntriesRequest
+			err = json.Unmarshal(line, &req)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			n.handleAppendEntries(conn, req)
 		default:
 			log.Printf("Unknown RPC type: %s", typeMsg.Type)
 		}
