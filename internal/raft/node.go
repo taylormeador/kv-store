@@ -33,6 +33,7 @@ type Node struct {
 	currentTerm int
 	votedFor    int
 	log         []LogEntry // LogEntry.Index is 1-indexed while log is 0-indexed
+	ApplyCh     chan LogEntry
 
 	// Volatile state
 	commitIndex   int
@@ -54,6 +55,7 @@ func NewNode(ID int, port int, peers []string) *Node {
 		port:             port,
 		peers:            peers,
 		state:            FollowerState,
+		ApplyCh:          make(chan LogEntry, 100),
 		commitWaiters:    make(map[int]chan bool),
 		lastHeartbeat:    time.Now(),
 		heartbeatTimeout: randomTimeout(),
@@ -82,6 +84,7 @@ func (n *Node) Start() {
 	defer n.listener.Close()
 
 	go n.runElectionTimer()
+	go n.runApplyLoop()
 
 	for {
 		conn, err := n.listener.Accept()
@@ -134,6 +137,23 @@ func (n *Node) handleConnection(conn net.Conn) {
 			n.handleAppendEntries(conn, req)
 		default:
 			log.Printf("unknown RPC type: %s", typeMsg.Type)
+		}
+	}
+}
+
+func (n *Node) runApplyLoop() {
+	for {
+		time.Sleep(10 * time.Millisecond)
+
+		n.mu.Lock()
+		for n.commitIndex > n.lastApplied {
+			n.lastApplied++
+			if n.lastApplied > len(n.log) {
+				break
+			} // TODO is this actually necessary?
+
+			n.ApplyCh <- n.log[n.lastApplied-1]
+			n.mu.Unlock()
 		}
 	}
 }

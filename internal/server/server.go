@@ -57,7 +57,7 @@ func (s *Server) Listen() error {
 	}
 	s.listener = ln
 
-	log.Printf("Starting server on localhost:%d", s.Port)
+	log.Printf("starting server on localhost:%d", s.Port)
 
 	return nil
 }
@@ -65,6 +65,8 @@ func (s *Server) Listen() error {
 // Serve() listens on the port and accepts new connections with a handler.
 func (s *Server) Serve() {
 	defer s.listener.Close()
+
+	go s.consumeApplyCh()
 
 	for {
 		conn, err := s.listener.Accept()
@@ -75,7 +77,7 @@ func (s *Server) Serve() {
 			log.Println(err)
 			continue
 		}
-		log.Printf("Connected to %s", conn.RemoteAddr().String())
+		log.Printf("connected to %s", conn.RemoteAddr().String())
 		s.wg.Add(1)
 		go s.handleConnection(conn)
 	}
@@ -83,11 +85,11 @@ func (s *Server) Serve() {
 
 func (s *Server) Shutdown() {
 	// Close listener
-	log.Println("Shutting down server...")
+	log.Println("shutting down server...")
 	s.listener.Close()
 
 	// Wait for workers to finish
-	log.Println("Listener closed, waiting for workers to finish...")
+	log.Println("listener closed, waiting for workers to finish...")
 	done := make(chan struct{})
 	go func() {
 		s.wg.Wait()
@@ -97,15 +99,15 @@ func (s *Server) Shutdown() {
 	// Create a timeout for worker cleanup
 	select {
 	case <-done:
-		log.Println("All workers exited...")
+		log.Println("all workers exited...")
 	case <-time.After(10 * time.Second):
-		log.Println("Worker cleanup timed out, forcing shutdown")
+		log.Println("worker cleanup timed out, forcing shutdown")
 	}
 
 	// Close WAL
-	log.Println("Closing WAL...")
+	log.Println("closing WAL...")
 	if err := s.WAL.Close(); err != nil {
-		log.Printf("Error closing WAL: %v", err)
+		log.Printf("error closing WAL: %v", err)
 	}
 }
 
@@ -120,7 +122,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 		ln := scanner.Text()
 		c, err := protocol.ParseCommand(ln) // TODO should this return value instead of pointer?
 		if err != nil {
-			log.Println("Error parsing command:", err)
+			log.Println("error parsing command:", err)
 
 			// Send response
 			response := fmt.Sprintf("ERROR %s\n", err)
@@ -142,22 +144,25 @@ func (s *Server) handleConnection(conn net.Conn) {
 				response = val
 			}
 		case protocol.SetDirective:
-			s.WAL.Append(*c)
+			s.WAL.Append(*c) // TODO deprecate WAL
 			if err := s.Raft.Propose(*c); err != nil {
 				response = err.Error()
 			} else {
-				// TODO wait for raft to commit
-				// TODO let Apply loop update store
 				response = "OK"
 			}
 		case protocol.DeleteDirective:
-			s.WAL.Append(*c)
-			// TODO use raft here, need to implement apply loop first
-			exists := s.Store.Delete(c.Key)
+			s.WAL.Append(*c) // TODO deprecate WAL
+
+			// Remember if exists before proposing delete
+			exists := s.Store.Exists(c.Key)
 			if exists {
 				response = "TRUE"
 			} else {
 				response = "FALSE"
+			}
+
+			if err := s.Raft.Propose(*c); err != nil {
+				response = err.Error()
 			}
 		case protocol.ExistsDirective:
 			exists := s.Store.Exists(c.Key)
@@ -177,4 +182,20 @@ func (s *Server) handleConnection(conn net.Conn) {
 	}
 
 	log.Printf("closing connection with %s", conn.RemoteAddr().String())
+}
+
+// Apply the commands to the store in the background
+func (s *Server) consumeApplyCh() {
+	for entry := range s.Raft.ApplyCh {
+		switch entry.Command.Directive {
+		case protocol.SetDirective:
+			log.Printf("applying %s", entry.Command.String())
+			s.Store.Set(entry.Command.Key, entry.Command.Value)
+		case protocol.DeleteDirective:
+			log.Printf("applying %s", entry.Command.String())
+			s.Store.Delete(entry.Command.Key)
+		default:
+			log.Printf("unknown entry in ApplyCh: %s", entry.Command.String())
+		}
+	}
 }
