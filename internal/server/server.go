@@ -120,7 +120,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 	for scanner.Scan() {
 		// Parse command
 		ln := scanner.Text()
-		c, err := protocol.ParseCommand(ln) // TODO should this return value instead of pointer?
+		c, err := protocol.ParseCommand(ln)
 		if err != nil {
 			log.Println("error parsing command:", err)
 
@@ -146,7 +146,16 @@ func (s *Server) handleConnection(conn net.Conn) {
 		case protocol.SetDirective:
 			s.WAL.Append(*c) // TODO deprecate WAL
 			if err := s.Raft.Propose(*c); err != nil {
-				response = err.Error()
+				switch err {
+				case raft.ErrNotLeader:
+					// TODO set n.LeaderID somewhere
+					response = fmt.Sprintf("%s - try %s", err.Error(), s.Raft.LeaderAddr)
+				case raft.ErrTimeout:
+					response = err.Error()
+				default: // Should never get here
+					response = err.Error()
+				}
+
 			} else {
 				response = "OK"
 			}

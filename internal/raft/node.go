@@ -21,11 +21,11 @@ const (
 
 type Node struct {
 	// Self
-	id       int
-	port     int
-	listener net.Listener
-	peers    []string
-	leaderID int
+	id         int
+	port       int
+	listener   net.Listener
+	peers      []string
+	LeaderAddr string // TODO implement this
 
 	// State
 	mu          sync.RWMutex
@@ -95,7 +95,6 @@ func (n *Node) Start() {
 			log.Println(err)
 			continue
 		}
-		log.Printf("connected to %s", conn.RemoteAddr().String())
 		go n.handleConnection(conn)
 	}
 }
@@ -152,8 +151,9 @@ func (n *Node) runApplyLoop() {
 				break
 			} // TODO is this actually necessary?
 
+			log.Printf("sending %v on ApplyCh", n.log[n.lastApplied-1])
 			n.ApplyCh <- n.log[n.lastApplied-1]
-			n.mu.Unlock()
 		}
+		n.mu.Unlock()
 	}
 }
