@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/taylormeador/kv-store/internal/protocol"
+	"github.com/taylormeador/kv-store/internal/raft"
 	"github.com/taylormeador/kv-store/internal/store"
 	"github.com/taylormeador/kv-store/internal/wal"
 )
@@ -18,12 +19,13 @@ type Server struct {
 	Port     int
 	Store    *store.Store
 	WAL      *wal.WAL
+	Raft     *raft.Node
 	wg       sync.WaitGroup
 	listener net.Listener
 }
 
 // Constructor
-func NewServer(port int, wal_path string) (*Server, error) {
+func NewServer(port int, wal_path string, raft *raft.Node) (*Server, error) {
 	// Create WAL
 	wal, err := wal.NewWAL(wal_path)
 	if err != nil {
@@ -41,6 +43,7 @@ func NewServer(port int, wal_path string) (*Server, error) {
 		Port:  port,
 		Store: store,
 		WAL:   wal,
+		Raft:  raft,
 	}
 	return s, nil
 }
@@ -115,7 +118,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 	for scanner.Scan() {
 		// Parse command
 		ln := scanner.Text()
-		c, err := protocol.ParseCommand(ln)
+		c, err := protocol.ParseCommand(ln) // TODO should this return value instead of pointer?
 		if err != nil {
 			log.Println("Error parsing command:", err)
 
@@ -140,10 +143,16 @@ func (s *Server) handleConnection(conn net.Conn) {
 			}
 		case protocol.SetDirective:
 			s.WAL.Append(*c)
-			s.Store.Set(c.Key, c.Value)
-			response = "OK"
+			if err := s.Raft.Propose(*c); err != nil {
+				response = err.Error()
+			} else {
+				// TODO wait for raft to commit
+				// TODO let Apply loop update store
+				response = "OK"
+			}
 		case protocol.DeleteDirective:
 			s.WAL.Append(*c)
+			// TODO use raft here, need to implement apply loop first
 			exists := s.Store.Delete(c.Key)
 			if exists {
 				response = "TRUE"
@@ -160,12 +169,12 @@ func (s *Server) handleConnection(conn net.Conn) {
 		}
 
 		// Send response
-		log.Printf("Writing to %s: %s", conn.RemoteAddr().String(), response)
+		log.Printf("writing to %s: %s", conn.RemoteAddr().String(), response)
 		_, err = conn.Write([]byte(response + "\n"))
 		if err != nil {
 			log.Println(err)
 		}
 	}
 
-	log.Printf("Closing connection with %s", conn.RemoteAddr().String())
+	log.Printf("closing connection with %s", conn.RemoteAddr().String())
 }
