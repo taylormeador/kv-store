@@ -21,34 +21,40 @@ const (
 
 type Node struct {
 	// Self
-	id    int
-	port  int
-	peers []string
+	id       int
+	port     int
+	listener net.Listener
+	peers    []string
+	leaderID int
 
 	// State
-	mu           sync.RWMutex
-	state        NodeState
-	currentTerm  int
-	votedFor     int
-	lastLogIndex int
-	lastLogTerm  int
-	log          []string
+	mu          sync.RWMutex
+	state       NodeState
+	currentTerm int
+	votedFor    int
+	log         []LogEntry
+
+	// Volatile state
+	commitIndex   int
+	lastApplied   int
+	commitWaiters map[int]chan bool
+
+	// Leader volatile state
+	nextIndex  map[string]int // peer -> index of next log entry to send to node
+	matchIndex map[string]int // peer -> index of highest log entry known to be replicated on node
 
 	// Timing
 	lastHeartbeat    time.Time
 	heartbeatTimeout time.Duration
-
-	listener net.Listener
 }
 
 func NewNode(ID int, port int, peers []string) *Node {
 	return &Node{
-		id:    ID,
-		port:  port,
-		peers: peers,
-
-		state: FollowerState,
-
+		id:               ID,
+		port:             port,
+		peers:            peers,
+		state:            FollowerState,
+		commitWaiters:    make(map[int]chan bool),
 		lastHeartbeat:    time.Now(),
 		heartbeatTimeout: randomTimeout(),
 	}
@@ -62,7 +68,7 @@ func (n *Node) Listen() error {
 	}
 	n.listener = ln
 
-	log.Printf("Starting raft server on localhost:%d", n.port)
+	log.Printf("starting raft server on localhost:%d", n.port)
 
 	return nil
 }
@@ -81,7 +87,7 @@ func (n *Node) Start() {
 			log.Println(err)
 			continue
 		}
-		log.Printf("Connected to %s", conn.RemoteAddr().String())
+		log.Printf("connected to %s", conn.RemoteAddr().String())
 		go n.handleConnection(conn)
 	}
 }
@@ -99,7 +105,7 @@ func (n *Node) handleConnection(conn net.Conn) {
 		}
 		err := json.Unmarshal(line, &typeMsg)
 		if err != nil {
-			log.Println("Error parsing RPC type:", err)
+			log.Println("error parsing RPC type:", err)
 			continue
 		}
 
@@ -122,7 +128,7 @@ func (n *Node) handleConnection(conn net.Conn) {
 			}
 			n.handleAppendEntries(conn, req)
 		default:
-			log.Printf("Unknown RPC type: %s", typeMsg.Type)
+			log.Printf("unknown RPC type: %s", typeMsg.Type)
 		}
 	}
 }
