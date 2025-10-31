@@ -47,7 +47,7 @@ func main() {
 	go raftNode.Start()
 
 	// Start kv server
-	kvServer, err := server.NewServer(KV_PORT, WAL_PATH)
+	kvServer, err := server.NewServer(KV_PORT, WAL_PATH, raftNode)
 	if err != nil {
 		log.Fatal(err)
 	}
