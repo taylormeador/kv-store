@@ -45,11 +45,15 @@ func (n *Node) startElection() {
 	n.mu.Unlock()
 	for _, peer := range n.peers {
 		go func(peer string) {
+			n.mu.RLock()
 			req := RequestVoteRequest{
-				Type:        RequestVoteRPC,
-				Term:        currentTerm,
-				CandidateID: n.id,
+				Type:         RequestVoteRPC,
+				Term:         currentTerm,
+				CandidateID:  n.id,
+				LastLogIndex: n.getLastLogIndex(),
+				LastLogTerm:  n.getLastLogTerm(),
 			}
+			n.mu.RUnlock()
 			resp, err := n.sendRequestVote(peer, req)
 			if err != nil {
 				log.Println(err)
@@ -94,23 +98,14 @@ func (n *Node) becomeFollower(term int) {
 func (n *Node) becomeLeader() {
 	// Caller must hold lock
 	n.state = LeaderState
-	go n.runHeartbeatLoop()
-}
+	n.nextIndex = make(map[string]int)
+	n.matchIndex = make(map[string]int)
 
-func (n *Node) runHeartbeatLoop() {
-	for {
-		req := AppendEntriesRequest{
-			Type:              AppendEntriesRPC,
-			Term:              n.currentTerm,
-			LeaderID:          n.id,
-			PrevLogIndex:      0,
-			PrevLogTerm:       0,
-			Entries:           []string{""},
-			LeaderCommitIndex: 0,
-		}
-		for _, peer := range n.peers {
-			go n.sendAppendEntries(peer, req)
-		}
-		time.Sleep(50 * time.Millisecond)
+	lastLogIndex := n.getLastLogIndex()
+	for _, peer := range n.peers {
+		n.nextIndex[peer] = lastLogIndex + 1 // Optimistic
+		n.matchIndex[peer] = 0
 	}
+
+	go n.runHeartbeatLoop()
 }

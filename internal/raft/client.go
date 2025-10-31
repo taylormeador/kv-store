@@ -4,7 +4,7 @@ import (
 	"net"
 )
 
-// Send a request to vote to a peer
+// Send a request for vote to a peer
 func (n *Node) sendRequestVote(peer string, req RequestVoteRequest) (*RequestVoteResponse, error) {
 	var d net.Dialer
 	conn, err := d.Dial("tcp", peer)
@@ -24,6 +24,7 @@ func (n *Node) sendRequestVote(peer string, req RequestVoteRequest) (*RequestVot
 	return &resp, nil
 }
 
+// AppendEntries RPC + heartbeat
 func (n *Node) sendAppendEntries(peer string, req AppendEntriesRequest) (*AppendEntriesResponse, error) {
 	var d net.Dialer
 	conn, err := d.Dial("tcp", peer)

@@ -35,7 +35,7 @@ func (n *Node) handleRequestVote(conn net.Conn, req RequestVoteRequest) error {
 	// If votedFor is null or candidateId, and candidate’s log is at
 	// least as up-to-date as receiver’s log, grant vote.
 	if n.votedFor == 0 || n.votedFor == req.CandidateID {
-		if n.lastLogIndex <= req.LastLogIndex {
+		if n.getLastLogIndex() <= req.LastLogIndex {
 			resp.VoteGranted = true
 			n.votedFor = req.CandidateID
 			n.lastHeartbeat = time.Now()
@@ -55,6 +55,7 @@ func (n *Node) handleAppendEntries(conn net.Conn, req AppendEntriesRequest) erro
 	defer n.mu.Unlock()
 
 	resp := AppendEntriesResponse{
+		Type:    AppendEntriesRPC,
 		Term:    n.currentTerm,
 		Success: false,
 	}
@@ -66,16 +67,22 @@ func (n *Node) handleAppendEntries(conn net.Conn, req AppendEntriesRequest) erro
 		return nil
 	} else {
 		n.becomeFollower(req.Term)
-		resp.Success = true
 	}
 
+	// TODO: Check log consistency (prevLogIndex/prevLogTerm)
+	// For now, just accept and append
+	if len(req.Entries) > 0 {
+		n.log = append(n.log, req.Entries...)
+	}
+
+	// Update commit index
+	if req.LeaderCommitIndex > n.commitIndex {
+		n.commitIndex = req.LeaderCommitIndex
+	}
+
+	resp.Success = true
 	if err := n.writeJSON(conn, resp); err != nil {
 		return err
 	}
 	return nil
-}
-
-func (n *Node) Shutdown() {
-	log.Println("Shutting down raft node...")
-	n.listener.Close()
 }

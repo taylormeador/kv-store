@@ -32,7 +32,7 @@ type Node struct {
 	state       NodeState
 	currentTerm int
 	votedFor    int
-	log         []LogEntry
+	log         []LogEntry // LogEntry.Index is 1-indexed while log is 0-indexed
 
 	// Volatile state
 	commitIndex   int
@@ -58,6 +58,11 @@ func NewNode(ID int, port int, peers []string) *Node {
 		lastHeartbeat:    time.Now(),
 		heartbeatTimeout: randomTimeout(),
 	}
+}
+
+func (n *Node) Shutdown() {
+	log.Println("shutting down raft node...")
+	n.listener.Close()
 }
 
 func (n *Node) Listen() error {

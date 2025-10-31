@@ -3,7 +3,7 @@ package raft
 import "github.com/taylormeador/kv-store/internal/protocol"
 
 type LogEntry struct {
-	Index   int
+	Index   int // This is 1-indexed
 	Term    int
 	Command protocol.Command
 }

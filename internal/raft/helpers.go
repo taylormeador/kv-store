@@ -3,11 +3,15 @@ package raft
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net"
 	"time"
 )
+
+var ErrNotLeader = errors.New("ERROR not leader")
+var ErrTimeout = errors.New("ERROR timeout")
 
 // Reads RPCs as JSON
 func (n *Node) readJSON(conn net.Conn, target any) error {
