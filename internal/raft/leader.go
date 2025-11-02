@@ -77,6 +77,8 @@ func (n *Node) Propose(cmd protocol.Command) error {
 	n.log = append(n.log, logEntry)
 	n.storage.AppendEntry(logEntry)
 
+	// Associate every entry with a channel.
+	// Close the channel once the entry is replicated to a majority of nodes.
 	commitCh := make(chan bool)
 	n.commitWaiters[logEntry.Index] = commitCh
 
@@ -118,7 +120,7 @@ func (n *Node) Propose(cmd protocol.Command) error {
 				n.mu.Lock()
 				if n.nextIndex[peer] > 1 {
 					n.nextIndex[peer]--
-					log.Printf("follower %d rejected, backing up nextIndex to %s", peer, n.nextIndex[peer])
+					log.Printf("follower %s rejected, backing up nextIndex to %d", peer, n.nextIndex[peer])
 				}
 				n.mu.Unlock()
 			}
@@ -133,6 +135,9 @@ func (n *Node) Propose(cmd protocol.Command) error {
 	}
 }
 
+// An entry is considered committed once the leader that created the entry has replicated it on a majority of the servers.
+// Raft guarantees that commited entries are durable and will eventually be executed by all of the available state machines.
+// This function closes the entry's channel once the majority of nodes have successfully replicated the entry.
 func (n *Node) commitEntry(index int) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
