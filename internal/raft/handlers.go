@@ -39,7 +39,7 @@ func (n *Node) handleRequestVote(conn net.Conn, req RequestVoteRequest) error {
 			resp.VoteGranted = true
 			n.votedFor = req.CandidateID
 			n.lastHeartbeat = time.Now()
-			// TODO write currentTerm, votedFor, and log[] to disk before responding
+			n.storage.SaveState(n.currentTerm, n.votedFor)
 		}
 	}
 
@@ -104,10 +104,16 @@ func (n *Node) handleAppendEntries(conn net.Conn, req AppendEntriesRequest) erro
 				log.Printf("conflict at index %d: deleting from here", logIdx-1)
 				n.log = n.log[:logIdx-1]
 				n.log = append(n.log, req.Entries[i:]...)
+				for _, newEntry := range req.Entries[i:] {
+					n.storage.AppendEntry(newEntry)
+				}
 				break
 			}
 		} else {
 			n.log = append(n.log, req.Entries[i:]...)
+			for _, newEntry := range req.Entries[i:] {
+				n.storage.AppendEntry(newEntry)
+			}
 			break
 		}
 	}

@@ -39,7 +39,11 @@ func main() {
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	// Set up raft
-	raftNode := raft.NewNode(RAFT_ID, RAFT_PORT, RAFT_PEERS)
+	raftNode, err := raft.NewNode(RAFT_ID, RAFT_PORT, RAFT_PEERS, WAL_PATH)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	err = raftNode.Listen()
 	if err != nil {
 		log.Fatal(err)

@@ -93,6 +93,7 @@ func (n *Node) becomeFollower(term int) {
 	n.currentTerm = term
 	n.votedFor = 0
 	n.lastHeartbeat = time.Now()
+	n.storage.SaveState(n.currentTerm, n.votedFor)
 }
 
 func (n *Node) becomeLeader() {

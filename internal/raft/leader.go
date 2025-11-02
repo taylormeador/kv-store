@@ -58,7 +58,6 @@ func (n *Node) replicateToPeer(peer string) (*AppendEntriesResponse, error) {
 	}
 	n.mu.RUnlock()
 
-	log.Printf("replicating to peer %s", peer)
 	return n.sendAppendEntries(peer, req)
 }
 
@@ -76,6 +75,7 @@ func (n *Node) Propose(cmd protocol.Command) error {
 		Command: cmd,
 	}
 	n.log = append(n.log, logEntry)
+	n.storage.AppendEntry(logEntry)
 
 	commitCh := make(chan bool)
 	n.commitWaiters[logEntry.Index] = commitCh
@@ -118,7 +118,7 @@ func (n *Node) Propose(cmd protocol.Command) error {
 				n.mu.Lock()
 				if n.nextIndex[peer] > 1 {
 					n.nextIndex[peer]--
-					log.Printf("follower %s rejected, backing up nextIndex to %s", peer, n.nextIndex[peer])
+					log.Printf("follower %d rejected, backing up nextIndex to %s", peer, n.nextIndex[peer])
 				}
 				n.mu.Unlock()
 			}

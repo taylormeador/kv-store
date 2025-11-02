@@ -34,6 +34,7 @@ type Node struct {
 	votedFor    int
 	log         []LogEntry // LogEntry.Index is 1-indexed while log is 0-indexed
 	ApplyCh     chan LogEntry
+	storage     *Storage
 
 	// Volatile state
 	commitIndex   int
@@ -49,17 +50,33 @@ type Node struct {
 	heartbeatTimeout time.Duration
 }
 
-func NewNode(ID int, port int, peers []string) *Node {
-	return &Node{
+func NewNode(ID int, port int, peers []string, storagePath string) (*Node, error) {
+	storage, err := NewStorage(storagePath)
+	if err != nil {
+		return nil, err
+	}
+
+	term, votedFor, logEntries, err := storage.Restore()
+	if err != nil {
+		return nil, err
+	}
+
+	n := &Node{
 		id:               ID,
 		port:             port,
 		peers:            peers,
 		state:            FollowerState,
+		currentTerm:      term,
+		votedFor:         votedFor,
+		log:              logEntries,
 		ApplyCh:          make(chan LogEntry, 100),
+		storage:          storage,
 		commitWaiters:    make(map[int]chan bool),
 		lastHeartbeat:    time.Now(),
 		heartbeatTimeout: randomTimeout(),
 	}
+	log.Printf("restored from disk: term=%d, votedFor:=%d, log entries=%d", term, votedFor, len(logEntries))
+	return n, nil
 }
 
 func (n *Node) Shutdown() {

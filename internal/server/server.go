@@ -12,13 +12,11 @@ import (
 	"github.com/taylormeador/kv-store/internal/protocol"
 	"github.com/taylormeador/kv-store/internal/raft"
 	"github.com/taylormeador/kv-store/internal/store"
-	"github.com/taylormeador/kv-store/internal/wal"
 )
 
 type Server struct {
 	Port     int
 	Store    *store.Store
-	WAL      *wal.WAL
 	Raft     *raft.Node
 	wg       sync.WaitGroup
 	listener net.Listener
@@ -26,23 +24,9 @@ type Server struct {
 
 // Constructor
 func NewServer(port int, wal_path string, raft *raft.Node) (*Server, error) {
-	// Create WAL
-	wal, err := wal.NewWAL(wal_path)
-	if err != nil {
-		return nil, err
-	}
-
-	// Init data store and restore to last known state
-	store := store.NewStore()
-	err = wal.Replay(store)
-	if err != nil {
-		return nil, err
-	}
-
 	s := &Server{
 		Port:  port,
-		Store: store,
-		WAL:   wal,
+		Store: store.NewStore(),
 		Raft:  raft,
 	}
 	return s, nil
@@ -103,12 +87,6 @@ func (s *Server) Shutdown() {
 	case <-time.After(10 * time.Second):
 		log.Println("worker cleanup timed out, forcing shutdown")
 	}
-
-	// Close WAL
-	log.Println("closing WAL...")
-	if err := s.WAL.Close(); err != nil {
-		log.Printf("error closing WAL: %v", err)
-	}
 }
 
 func (s *Server) handleConnection(conn net.Conn) {
@@ -144,7 +122,6 @@ func (s *Server) handleConnection(conn net.Conn) {
 				response = val
 			}
 		case protocol.SetDirective:
-			s.WAL.Append(*c) // TODO deprecate WAL
 			if err := s.Raft.Propose(*c); err != nil {
 				switch err {
 				case raft.ErrNotLeader:
@@ -160,8 +137,6 @@ func (s *Server) handleConnection(conn net.Conn) {
 				response = "OK"
 			}
 		case protocol.DeleteDirective:
-			s.WAL.Append(*c) // TODO deprecate WAL
-
 			// Remember if exists before proposing delete
 			exists := s.Store.Exists(c.Key)
 			if exists {
