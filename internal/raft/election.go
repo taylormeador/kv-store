@@ -97,6 +97,7 @@ func (n *Node) becomeFollower(term int) {
 
 func (n *Node) becomeLeader() {
 	// Caller must hold lock
+	log.Println("becoming leader")
 	n.state = LeaderState
 	n.nextIndex = make(map[string]int)
 	n.matchIndex = make(map[string]int)

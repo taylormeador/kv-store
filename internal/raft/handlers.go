@@ -51,6 +51,7 @@ func (n *Node) handleRequestVote(conn net.Conn, req RequestVoteRequest) error {
 }
 
 func (n *Node) handleAppendEntries(conn net.Conn, req AppendEntriesRequest) error {
+	log.Printf("receieved AppendEntries RPC")
 	n.mu.Lock()
 	defer n.mu.Unlock()
 

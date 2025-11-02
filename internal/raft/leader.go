@@ -84,6 +84,7 @@ func (n *Node) Propose(cmd protocol.Command) error {
 	successesNeeded := (len(n.peers)+1)/2 + 1
 	for _, peer := range n.peers {
 		go func(peer string) {
+			log.Printf("replicating to peer %s", peer)
 			resp, err := n.replicateToPeer(peer)
 			if err != nil {
 				log.Println(err)
