@@ -51,7 +51,6 @@ func (n *Node) handleRequestVote(conn net.Conn, req RequestVoteRequest) error {
 }
 
 func (n *Node) handleAppendEntries(conn net.Conn, req AppendEntriesRequest) error {
-	log.Printf("receieved AppendEntries RPC")
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
@@ -61,6 +60,7 @@ func (n *Node) handleAppendEntries(conn net.Conn, req AppendEntriesRequest) erro
 		Success: false,
 	}
 
+	// Reply false if term < currentTerm
 	if req.Term < n.currentTerm {
 		if err := n.writeJSON(conn, resp); err != nil {
 			return err
@@ -70,15 +70,51 @@ func (n *Node) handleAppendEntries(conn net.Conn, req AppendEntriesRequest) erro
 		n.becomeFollower(req.Term)
 	}
 
-	// TODO: Check log consistency (prevLogIndex/prevLogTerm)
-	// For now, just accept and append
-	if len(req.Entries) > 0 {
-		n.log = append(n.log, req.Entries...)
+	// Reply false if log doesn't contain an entry at prevLogIndex
+	// whose term matches prevLogTerm
+	if req.PrevLogIndex > 0 {
+		if req.PrevLogIndex > n.getLastLogIndex() {
+			log.Printf("consistency check failed: missing entry at index %d (have up to %d)", req.PrevLogIndex, n.getLastLogIndex())
+			if err := n.writeJSON(conn, resp); err != nil {
+				return err
+			}
+			return nil
+		}
+
+		prevEntry := n.log[req.PrevLogIndex-1]
+		if prevEntry.Term != req.PrevLogTerm {
+			log.Printf("consistency check failed: term mismatch at index %d (have %d, need %d)", req.PrevLogIndex, prevEntry.Term, req.PrevLogTerm)
+			log.Printf("deleting conflicting entries from index %d onwards", req.PrevLogIndex)
+			n.log = n.log[:req.PrevLogIndex-1]
+			if err := n.writeJSON(conn, resp); err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+
+	// Last log entry is consistent so we append new entries,
+	// checking for conflicts in existing entries and discarding
+	insertIdx := req.PrevLogIndex + 1
+	for i, entry := range req.Entries {
+		logIdx := insertIdx + i
+		if logIdx <= len(n.log) {
+			existingEntry := n.log[logIdx-1]
+			if existingEntry.Term != entry.Term {
+				log.Printf("conflict at index %d: deleting from here", logIdx-1)
+				n.log = n.log[:logIdx-1]
+				n.log = append(n.log, req.Entries[i:]...)
+				break
+			}
+		} else {
+			n.log = append(n.log, req.Entries[i:]...)
+			break
+		}
 	}
 
 	// Update commit index
 	if req.LeaderCommitIndex > n.commitIndex {
-		n.commitIndex = req.LeaderCommitIndex
+		n.commitIndex = min(req.LeaderCommitIndex, n.getLastLogIndex())
 	}
 
 	resp.Success = true

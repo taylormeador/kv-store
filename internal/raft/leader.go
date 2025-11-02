@@ -28,6 +28,12 @@ func (n *Node) runHeartbeatLoop() {
 
 func (n *Node) replicateToPeer(peer string) (*AppendEntriesResponse, error) {
 	n.mu.RLock()
+
+	if n.state != LeaderState {
+		n.mu.RUnlock()
+		return nil, ErrNotLeader
+	}
+
 	nextIdx := n.nextIndex[peer]
 	var entries []LogEntry
 	if nextIdx <= len(n.log) {
@@ -52,11 +58,8 @@ func (n *Node) replicateToPeer(peer string) (*AppendEntriesResponse, error) {
 	}
 	n.mu.RUnlock()
 
-	resp, err := n.sendAppendEntries(peer, req)
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
+	log.Printf("replicating to peer %s", peer)
+	return n.sendAppendEntries(peer, req)
 }
 
 // Propose a new entry to the log and try to get quorum approval
@@ -106,15 +109,18 @@ func (n *Node) Propose(cmd protocol.Command) error {
 				// Follower has higher term, so we step down.
 				if resp.Term > n.currentTerm {
 					n.mu.Lock()
-					defer n.mu.Unlock()
 					n.becomeFollower(resp.Term)
+					n.mu.Unlock()
 					return
 				}
 
 				// Log is inconsistent, decrement until we catch them up
 				n.mu.Lock()
-				defer n.mu.Unlock()
-				n.nextIndex[peer]--
+				if n.nextIndex[peer] > 1 {
+					n.nextIndex[peer]--
+					log.Printf("follower %s rejected, backing up nextIndex to %s", peer, n.nextIndex[peer])
+				}
+				n.mu.Unlock()
 			}
 		}(peer)
 	}
