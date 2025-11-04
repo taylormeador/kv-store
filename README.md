@@ -92,6 +92,12 @@ DELETE key\n       → TRUE\n | FALSE\n
 EXISTS key\n       → TRUE\n | FALSE\n
 ```
 
+Supports atomic transactions with `TX` keyword followed by multiple write commands.
+For example if Bob and Joe perform a financial transaction:
+```
+TX SET bob:balance 100 SET joe:balance 150
+```
+
 ## Changelog
 
 ### Phase 5: Distributed Consensus (Current)
