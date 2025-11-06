@@ -9,7 +9,7 @@ type Transaction struct {
 // A Transaction can only have 8 operations (this is arbitrary)
 func (tx *Transaction) IsValid() bool {
 	for _, op := range tx.Operations {
-		if op.Directive != SetDirective || op.Directive != DeleteDirective {
+		if op.Directive != SetDirective && op.Directive != DeleteDirective {
 			return false
 		}
 	}

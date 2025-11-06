@@ -3,6 +3,7 @@ package protocol
 import (
 	"bufio"
 	"errors"
+	"log"
 	"strings"
 )
 
@@ -38,11 +39,13 @@ func ParseCommand(input string) (*Command, error) {
 			switch directive {
 			case TxDirective:
 				c.Type = TransactionCommand
+				c.Transaction = &Transaction{}
 				if err := parseTransaction(words, c.Transaction); err != nil {
 					return nil, err
 				}
 			default:
 				c.Type = OperationCommand
+				c.Operation = &Operation{}
 				if err := parseSingleOperation(words, c.Operation); err != nil {
 					return nil, err
 				}
@@ -50,7 +53,6 @@ func ParseCommand(input string) (*Command, error) {
 		} else {
 			return nil, ErrInvalidCommand
 		}
-
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
@@ -89,7 +91,6 @@ func parseNextOperation(words []string, o *Operation) ([]string, error) {
 					} else {
 						return []string{}, nil
 					}
-
 				}
 			case 2:
 				// The third word is the value for `SET` and is always the final word
@@ -124,19 +125,24 @@ func parseSingleOperation(words []string, o *Operation) error {
 func parseTransaction(words []string, tx *Transaction) error {
 	// Any valid Transaction will have at least "TX <Directive> <Key>" and will be length > 2
 	if len(words) > 2 {
+
+		var err error
+
 		// We already know the first word is "TX"
 		words = words[1:]
 		for {
 			nextOperation := &Operation{}
-			words, err := parseNextOperation(words, nextOperation)
+			words, err = parseNextOperation(words, nextOperation)
 			if err != nil {
 				return err
 			}
 			tx.Operations = append(tx.Operations, nextOperation)
 			if len(words) == 0 {
 				if !tx.IsValid() {
+					log.Println("DEBUG parsing tx invalid Tx")
 					return ErrInvalidCommand
 				}
+				log.Printf("transaction parsed: %v", tx)
 				return nil
 			}
 		}
