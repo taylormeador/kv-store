@@ -53,6 +53,8 @@ func ParseCommand(input string) (*Command, error) {
 		} else {
 			return nil, ErrInvalidCommand
 		}
+	} else { // Empty input ""
+		return nil, ErrInvalidCommand
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, err
@@ -104,6 +106,11 @@ func parseNextOperation(words []string, o *Operation) ([]string, error) {
 					return []string{}, nil
 				}
 			}
+		}
+		// If we reach here, the loop ended without returning
+		// This happens when SET directive doesn't have enough words for a value
+		if o.Directive == SetDirective {
+			return nil, ErrInvalidOperation
 		}
 	}
 	return words, nil
