@@ -8,13 +8,13 @@ func TestParseValidCommands(t *testing.T) {
 	tests := []struct {
 		name      string
 		input     string
-		want      *Command
+		want      *Operation
 		wantError bool
 	}{
 		{
 			name:  "GET command",
 			input: "GET mykey",
-			want: &Command{
+			want: &Operation{
 				Directive: GetDirective,
 				Key:       "mykey",
 				Value:     "",
@@ -24,7 +24,7 @@ func TestParseValidCommands(t *testing.T) {
 		{
 			name:  "SET command",
 			input: "SET mykey myvalue",
-			want: &Command{
+			want: &Operation{
 				Directive: SetDirective,
 				Key:       "mykey",
 				Value:     "myvalue",
@@ -34,7 +34,7 @@ func TestParseValidCommands(t *testing.T) {
 		{
 			name:  "DELETE command",
 			input: "DELETE mykey",
-			want: &Command{
+			want: &Operation{
 				Directive: DeleteDirective,
 				Key:       "mykey",
 				Value:     "",
@@ -44,7 +44,7 @@ func TestParseValidCommands(t *testing.T) {
 		{
 			name:  "EXISTS command",
 			input: "EXISTS mykey",
-			want: &Command{
+			want: &Operation{
 				Directive: ExistsDirective,
 				Key:       "mykey",
 				Value:     "",
@@ -54,7 +54,7 @@ func TestParseValidCommands(t *testing.T) {
 		{
 			name:  "SET with numeric value",
 			input: "SET count 42",
-			want: &Command{
+			want: &Operation{
 				Directive: SetDirective,
 				Key:       "count",
 				Value:     "42",
@@ -64,7 +64,7 @@ func TestParseValidCommands(t *testing.T) {
 		{
 			name:  "Key with special characters",
 			input: "GET user:123:name",
-			want: &Command{
+			want: &Operation{
 				Directive: GetDirective,
 				Key:       "user:123:name",
 				Value:     "",
@@ -170,12 +170,12 @@ func TestParseCommandWithExtraWhitespace(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
-		want  *Command
+		want  *Operation
 	}{
 		{
 			name:  "Multiple spaces between words",
 			input: "GET    mykey",
-			want: &Command{
+			want: &Operation{
 				Directive: GetDirective,
 				Key:       "mykey",
 			},
@@ -183,7 +183,7 @@ func TestParseCommandWithExtraWhitespace(t *testing.T) {
 		{
 			name:  "Leading whitespace",
 			input: "   GET mykey",
-			want: &Command{
+			want: &Operation{
 				Directive: GetDirective,
 				Key:       "mykey",
 			},
@@ -191,7 +191,7 @@ func TestParseCommandWithExtraWhitespace(t *testing.T) {
 		{
 			name:  "Trailing whitespace",
 			input: "GET mykey   ",
-			want: &Command{
+			want: &Operation{
 				Directive: GetDirective,
 				Key:       "mykey",
 			},
@@ -199,7 +199,7 @@ func TestParseCommandWithExtraWhitespace(t *testing.T) {
 		{
 			name:  "Tabs instead of spaces",
 			input: "GET\tmykey",
-			want: &Command{
+			want: &Operation{
 				Directive: GetDirective,
 				Key:       "mykey",
 			},
@@ -249,12 +249,12 @@ func TestDirectiveIsValid(t *testing.T) {
 func TestCommandString(t *testing.T) {
 	tests := []struct {
 		name    string
-		command Command
+		command Operation
 		want    string
 	}{
 		{
 			name: "GET command",
-			command: Command{
+			command: Operation{
 				Directive: GetDirective,
 				Key:       "mykey",
 				Value:     "",
@@ -263,7 +263,7 @@ func TestCommandString(t *testing.T) {
 		},
 		{
 			name: "SET command",
-			command: Command{
+			command: Operation{
 				Directive: SetDirective,
 				Key:       "mykey",
 				Value:     "myvalue",
@@ -272,7 +272,7 @@ func TestCommandString(t *testing.T) {
 		},
 		{
 			name: "DELETE command",
-			command: Command{
+			command: Operation{
 				Directive: DeleteDirective,
 				Key:       "mykey",
 				Value:     "",
@@ -281,7 +281,7 @@ func TestCommandString(t *testing.T) {
 		},
 		{
 			name: "EXISTS command",
-			command: Command{
+			command: Operation{
 				Directive: ExistsDirective,
 				Key:       "mykey",
 				Value:     "",
@@ -290,7 +290,7 @@ func TestCommandString(t *testing.T) {
 		},
 		{
 			name: "SET with numeric value",
-			command: Command{
+			command: Operation{
 				Directive: SetDirective,
 				Key:       "count",
 				Value:     "42",
@@ -299,7 +299,7 @@ func TestCommandString(t *testing.T) {
 		},
 		{
 			name: "Key with special characters",
-			command: Command{
+			command: Operation{
 				Directive: GetDirective,
 				Key:       "user:123:name",
 				Value:     "",
@@ -308,7 +308,7 @@ func TestCommandString(t *testing.T) {
 		},
 		{
 			name: "SET with special characters in value",
-			command: Command{
+			command: Operation{
 				Directive: SetDirective,
 				Key:       "config",
 				Value:     "value-with-dashes",
@@ -329,7 +329,7 @@ func TestCommandString(t *testing.T) {
 
 func TestCommandStringRoundTrip(t *testing.T) {
 	// Test that String() produces output that can be parsed back
-	tests := []Command{
+	tests := []Operation{
 		{Directive: GetDirective, Key: "foo", Value: ""},
 		{Directive: SetDirective, Key: "foo", Value: "bar"},
 		{Directive: DeleteDirective, Key: "baz", Value: ""},
